@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+readonly SCRIPT_NAME=$(basename ${0})
+
 readonly MODE_DEBUG="[DEBUG]"
 readonly MODE_ERROR="[ERROR]"
 readonly MODE_INFO="[INFO]"
@@ -8,7 +10,24 @@ TIMESTAMP=""
 MODE=""
 NEWLINE=""
 
-while getopts "dehint" opt; do
+help() {
+    echo "Logging tool:"
+    echo -e "-d - debug log (requires: \"export DEBUG=true\")"
+    echo "-e - error log"
+    echo "-h - help"
+    echo "-i - info log"
+    echo "-n - newline at the end of message"
+    echo "-t - timestamp at the beginning"
+    exit 1
+}
+
+usage() {
+    echo "Usage: ${SCRIPT_NAME} [-d | -e | -i] [-nt] message"
+    echo "Example: ${SCRIPT_NAME} -int \"Hello world!\""
+    exit 1
+}
+
+while getopts "dehintu" opt; do
         case $opt in
             d)
                 MODE=${MODE_DEBUG}
@@ -28,6 +47,9 @@ while getopts "dehint" opt; do
             t)
                 TIMESTAMP="[$(date '+%Y-%m-%d %H:%M:%S')]"
                 ;;
+            u)
+                usage
+                ;;
             \?)
                 help
                 ;;
@@ -35,28 +57,12 @@ while getopts "dehint" opt; do
     done
     shift "$((OPTIND-1))"
 
-readonly SCRIPT_NAME=${0}
 readonly MESSAGE=${1}
 
 main() {
     if [ "${MODE}" != ${MODE_DEBUG} ] || [ "${DEBUG}" = true ] ; then
         log "${TIMESTAMP}" "${MODE}" "${MESSAGE}" "${NEWLINE}"
     fi
-}
-
-help() {
-    echo "Logging tool:"
-    echo -e "-d - debug log (requires: \"export DEBUG=true\")"
-    echo "-e - error log"
-    echo "-h - help"
-    echo "-i - info log"
-    echo "-n - newline at the end of message"
-    echo "-t - timestamp at the beginning"
-}
-
-usage() {
-    echo "Usage: ${SCRIPT_NAME} [-d | -e | -i] [-n] message"
-    exit 1
 }
 
 log() {
