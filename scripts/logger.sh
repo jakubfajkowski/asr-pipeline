@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-readonly MODE_DEBUG="DEBUG"
-readonly MODE_ERROR="ERROR"
-readonly MODE_INFO="INFO"
+readonly MODE_DEBUG="[DEBUG]"
+readonly MODE_ERROR="[ERROR]"
+readonly MODE_INFO="[INFO]"
 
-MODE="INFO"
-NEWLINE=false
+TIMESTAMP=""
+MODE=""
+NEWLINE=""
 
-while getopts "dehin" opt; do
+while getopts "dehint" opt; do
         case $opt in
             d)
                 MODE=${MODE_DEBUG}
@@ -22,7 +23,10 @@ while getopts "dehin" opt; do
                 MODE=${MODE_INFO}
                 ;;
             n)
-                NEWLINE=true
+                NEWLINE="\n"
+                ;;
+            t)
+                TIMESTAMP="[$(date '+%Y-%m-%d %H:%M:%S')]"
                 ;;
             \?)
                 help
@@ -35,8 +39,8 @@ readonly SCRIPT_NAME=${0}
 readonly MESSAGE=${1}
 
 main() {
-    if [ ${MODE} != ${MODE_DEBUG} ] || [ "${DEBUG}" = true ] ; then
-        log "${MODE}" "${MESSAGE}" "${NEWLINE}"
+    if [ "${MODE}" != ${MODE_DEBUG} ] || [ "${DEBUG}" = true ] ; then
+        log "${TIMESTAMP}" "${MODE}" "${MESSAGE}" "${NEWLINE}"
     fi
 }
 
@@ -47,6 +51,7 @@ help() {
     echo "-h - help"
     echo "-i - info log"
     echo "-n - newline at the end of message"
+    echo "-t - timestamp at the beginning"
 }
 
 usage() {
@@ -55,15 +60,15 @@ usage() {
 }
 
 log() {
-    current_time=$(date '+%Y-%m-%d %H:%M:%S')
-    mode=${1}
-    message=${2}
-    newline=${3}
+    timestamp=${1}
+    mode=${2}
+    message=${3}
+    newline=${4}
 
-    if [ ${newline} = true ] ; then
-        printf "[${current_time}][${mode}] ${message}\n"
+    if [ "${TIMESTAMP}" != "" ] || [ "${MODE}" != "" ] ; then
+        printf "${timestamp}${mode}\t${message}${newline}"
     else
-        printf "[${current_time}][${mode}] ${message}"
+        printf "${message}${newline}"
     fi
 }
 
