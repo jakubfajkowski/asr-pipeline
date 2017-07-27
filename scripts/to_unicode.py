@@ -7,7 +7,6 @@ import sys
 
 pattern = sys.argv[1]
 encoding = sys.argv[2]
-words = []
 
 def add_prefix_to_filename(path, prefix):
     filename = os.path.basename(path)
