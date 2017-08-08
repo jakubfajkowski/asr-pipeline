@@ -10,8 +10,6 @@ pattern = sys.argv[1]
 destination_dir = sys.argv[2]
 ratio = float(sys.argv[3])
 
-print(pattern, destination_dir, ratio)
-
 source_paths = glob.glob(pattern)
 random.shuffle(source_paths)
 

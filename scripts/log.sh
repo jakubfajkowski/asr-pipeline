@@ -2,10 +2,19 @@
 
 readonly SCRIPT_NAME=$(basename ${0})
 
-readonly MODE_DEBUG="[DEBUG]"
-readonly MODE_ERROR="[ERROR]"
-readonly MODE_INFO="[INFO]"
-readonly MODE_WARNING="[WARNING]"
+readonly MODE_DEBUG="[DEBUG]    "
+readonly MODE_DONE="[DONE]    "
+readonly MODE_ERROR="[ERROR]    "
+readonly MODE_INFO="[INFO]    "
+readonly MODE_WARNING="[WARNING]    "
+
+readonly COLOR_DEBUG="\e[35m"
+readonly COLOR_DONE="\e[32m"
+readonly COLOR_ERROR="\e[31m"
+readonly COLOR_INFO="\e[34m"
+readonly COLOR_WARNING="\e[33m"
+
+readonly COLOR_DEFAULT="\e[0m"
 
 
 main() {
@@ -16,21 +25,29 @@ log() {
     local timestamp=""
     local mode=""
     local newline=""
+    local color_begin=""
+    local color_end=""
 
     local OPTIND
-    while getopts "dehintuw" opt; do
+    while getopts "dehintuwx" opt; do
         case $opt in
             d)
-                mode=${MODE_DEBUG}
+                mode=${MODE_DONE}
+                color_begin=${COLOR_DONE}
+                color_end=${COLOR_DEFAULT}
                 ;;
             e)
                 mode=${MODE_ERROR}
+                color_begin=${COLOR_ERROR}
+                color_end=${COLOR_DEFAULT}
                 ;;
             h)
                 print_help
                 ;;
             i)
                 mode=${MODE_INFO}
+                color_begin=${COLOR_INFO}
+                color_end=${COLOR_DEFAULT}
                 ;;
             n)
                 newline="\n"
@@ -43,6 +60,13 @@ log() {
                 ;;
             w)
                 mode=${MODE_WARNING}
+                color_begin=${COLOR_WARNING}
+                color_end=${COLOR_DEFAULT}
+                ;;
+            x)
+                mode=${MODE_DEBUG}
+                color_begin=${COLOR_DEBUG}
+                color_end=${COLOR_DEFAULT}
                 ;;
             \?)
                 print_help
@@ -53,8 +77,8 @@ log() {
 
     local message="$@"
 
-    if [ "${mode}" != ${MODE_DEBUG} ] || [ "${DEBUG}" = true ] ; then
-        print_log "${timestamp}" "${mode}" "${message}" "${newline}"
+    if [ "${mode}" != "${MODE_DEBUG}" ] || [ "${DEBUG}" == true ] ; then
+        printf "${color_begin}${timestamp}${mode}${message}${color_end}${newline}" 1>&2
     fi
 }
 
@@ -74,23 +98,6 @@ print_usage() {
     echo "Usage: ${SCRIPT_NAME} [-d | -e | -i] [-nt] message"
     echo "Example: ${SCRIPT_NAME} -int \"Hello world!\""
     exit 1
-}
-
-print_log() {
-    local timestamp=${1}
-    local mode=${2}
-    local message=${3}
-    local newline=${4}
-
-    if [ "${timestamp}" != "" ] || [ "${mode}" != "" ] ; then
-        if [ "${mode}" == ${MODE_ERROR} ] ; then
-            printf "${timestamp}${mode}\t${message}${newline}" 1>&2
-        else
-            printf "${timestamp}${mode}\t${message}${newline}"
-        fi
-    else
-        printf "${message}${newline}"
-    fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
