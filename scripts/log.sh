@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 
-readonly SCRIPT_NAME=$(basename ${0})
+SCRIPT_NAME=$(basename ${0})
 
-readonly MODE_DEBUG="[DEBUG]    "
-readonly MODE_DONE="[DONE]    "
-readonly MODE_ERROR="[ERROR]    "
-readonly MODE_INFO="[INFO]    "
-readonly MODE_WARNING="[WARNING]    "
+MODE_DEBUG="[DEBUG]    "
+MODE_DONE="[DONE]    "
+MODE_ERROR="[ERROR]    "
+MODE_INFO="[INFO]    "
+MODE_WARNING="[WARNING]    "
 
-readonly COLOR_DEBUG="\e[35m"
-readonly COLOR_DONE="\e[32m"
-readonly COLOR_ERROR="\e[31m"
-readonly COLOR_INFO="\e[34m"
-readonly COLOR_WARNING="\e[33m"
+COLOR_DEBUG="\e[35m"
+COLOR_DONE="\e[32m"
+COLOR_ERROR="\e[31m"
+COLOR_INFO="\e[34m"
+COLOR_WARNING="\e[33m"
 
-readonly COLOR_DEFAULT="\e[0m"
-
+COLOR_DEFAULT="\e[0m"
 
 main() {
     log "$@"
 }
 
 log() {
+
     local timestamp=""
     local mode=""
     local newline=""
