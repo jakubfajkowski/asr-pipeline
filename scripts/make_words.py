@@ -14,4 +14,5 @@ with codecs.open(text_file_path, encoding='UTF-8', mode='r') as f_in:
     words += word_tokenize(utterances, language='polish')
 
 for word in sorted(set(words)):
-    print(word)
+    if word != '\'\'':
+        print(word)
