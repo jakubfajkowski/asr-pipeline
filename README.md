@@ -1,1 +1,0 @@
-1. Append PATH variable in ~/.bashrc with scripts path.

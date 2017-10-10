@@ -15,7 +15,7 @@ run() {
 }
 
 load_log_tool() {
-    source $(which log.sh)
+    source ./log.sh
 }
 
 load_log_tool

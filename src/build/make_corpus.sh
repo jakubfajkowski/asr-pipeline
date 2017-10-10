@@ -3,5 +3,5 @@
 files=${1}
 
 for file in ${files}; do
-    cut -f2 ${file}
+    grep -Po "(?<=<s> ).+?(?= </s>)" ${file}
 done
