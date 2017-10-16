@@ -1,21 +1,23 @@
 #!/bin/bash
 
+load_log_tool() {
+    source $(which log.sh)
+}
+
+
 run() {
+    set -o pipefail
     log_message="${1}"; shift
 
     log -int "${log_message}"
     log -xnt "$@"
-    if "$@" 2> ${ERROR_LOG}; then
+    if "$@" 2>> ${LOG}; then
         log -dnt "${log_message}"
     else
         log -ent "${log_message}"
-        log -ent "Log path: ${ERROR_LOG}"
+        log -ent "Log path: ${LOG}"
         exit 1
     fi
-}
-
-load_log_tool() {
-    source ./log.sh
 }
 
 load_log_tool

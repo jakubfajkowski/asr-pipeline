@@ -62,7 +62,7 @@ prepare_build_dir() {
 
 split_data() {
     run "Splitting audio data to test and train sets..." \
-    make_split.py "${corpus_dir}/*" "${data_dir}" "${split_ratio}"
+    make_split.py --data-dir "${data_dir}" --split-ratio "${split_ratio}" ${corpus_dir}/*
 }
 
 prepare_data() {
@@ -71,7 +71,7 @@ prepare_data() {
     text="text"
     wav_scp="wav.scp"
     words="words"
-    lexicon="lexicon.txt"
+    lexicon_txt="lexicon.txt"
     utt2spk="utt2spk"
 
     dir=${1}
@@ -89,7 +89,7 @@ prepare_data() {
     make_words.py "${dir}/${text}" > "${dir}/${words}"
 
     run "Generating grapheme to phoneme mapping..." \
-    ${TOOLS_DIR}/multilingual-g2p/g2p.sh -w "${dir}/${words}" -l "${lang}" > "${dir}/${lexicon}"
+    ${TOOLS_DIR}/multilingual-g2p/g2p.sh -w "${dir}/${words}" -l "${lang}" > "${dir}/${lexicon_txt}"
 
     run "Preparing utt2spk..." \
     make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
@@ -111,8 +111,7 @@ prepare_local() {
     make_nonsilence_phones.sh > "${local_dir}/dict/nonsilence_phones.txt"
 
     run "Preparing lexicon..." \
-    cat ${test_dir}/lexicon.txt ${train_dir}/lexicon.txt | sort -u > "${local_dir}/dict/lexicon.txt"
-    echo -e "<UNK>\tspn" >> "${local_dir}/dict/lexicon.txt"
+    make_local_lexicon.sh > "${local_dir}/dict/lexicon.txt"
 }
 
 build_model() {
@@ -121,38 +120,38 @@ build_model() {
     decode_cmd="utils/run.pl"
 
 
-#    # Making spk2utt files
-#    utils/utt2spk_to_spk2utt.pl ${train_dir}/utt2spk > ${train_dir}/spk2utt
-#    utils/utt2spk_to_spk2utt.pl ${test_dir}/utt2spk > ${test_dir}/spk2utt
-#
-#
-#    utils/prepare_lang.sh ${local_dir}/dict "<UNK>" ${local_dir}/lang ${lang_dir}
-#
-#    echo
-#    echo "===== LANGUAGE MODEL CREATION ====="
-#    echo "===== MAKING lm.arpa ====="
-#    echo
-#
-#    mkdir ${local_dir}/tmp
-#    ngram-count -order 1 -write-vocab ${local_dir}/tmp/vocab-full.txt -wbdiscount -text ${local_dir}/corpus.txt -lm ${local_dir}/tmp/lm.arpa
-#    #ngram-count -order 1 -text ${local_dir}/corpus.txt -lm ${local_dir}/tmp/lm.arpa
-#
-#    echo
-#    echo "===== MAKING G.fst ====="
-#    echo
-#
-#    arpa2fst --disambig-symbol="#0" --read-symbol-table=${lang_dir}/words.txt ${local_dir}/tmp/lm.arpa ${lang_dir}/G.fst
-#
-#    utils/validate_lang.pl ${lang_dir}
-#
-#    # Feature extraction
-#    steps/make_mfcc.sh --nj 1 ${train_dir} ${build_dir}/exp/make_mfcc/train ${mfcc_dir}
-#    steps/compute_cmvn_stats.sh ${train_dir} ${build_dir}/exp/make_mfcc/train ${mfcc_dir}
-#    utils/fix_data_dir.sh ${train_dir}
-#
-#    steps/make_mfcc.sh --nj 1 ${test_dir} ${build_dir}/exp/make_mfcc/test ${mfcc_dir}
-#    steps/compute_cmvn_stats.sh ${test_dir} ${build_dir}/exp/make_mfcc/test ${mfcc_dir}
-#    utils/fix_data_dir.sh ${test_dir}
+    # Making spk2utt files
+    utils/utt2spk_to_spk2utt.pl ${train_dir}/utt2spk > ${train_dir}/spk2utt
+    utils/utt2spk_to_spk2utt.pl ${test_dir}/utt2spk > ${test_dir}/spk2utt
+
+
+    utils/prepare_lang.sh ${local_dir}/dict "<UNK>" ${local_dir}/lang ${lang_dir}
+
+    echo
+    echo "===== LANGUAGE MODEL CREATION ====="
+    echo "===== MAKING lm.arpa ====="
+    echo
+
+    mkdir ${local_dir}/tmp
+    ngram-count -order 1 -write-vocab ${local_dir}/tmp/vocab-full.txt -wbdiscount -text ${local_dir}/corpus.txt -lm ${local_dir}/tmp/lm.arpa
+    #ngram-count -order 1 -text ${local_dir}/corpus.txt -lm ${local_dir}/tmp/lm.arpa
+
+    echo
+    echo "===== MAKING G.fst ====="
+    echo
+
+    arpa2fst --disambig-symbol="#0" --read-symbol-table=${lang_dir}/words.txt ${local_dir}/tmp/lm.arpa ${lang_dir}/G.fst
+
+    utils/validate_lang.pl ${lang_dir}
+
+    # Feature extraction
+    steps/make_mfcc.sh --nj 1 ${train_dir} ${build_dir}/exp/make_mfcc/train ${mfcc_dir}
+    steps/compute_cmvn_stats.sh ${train_dir} ${build_dir}/exp/make_mfcc/train ${mfcc_dir}
+    utils/fix_data_dir.sh ${train_dir}
+
+    steps/make_mfcc.sh --nj 1 ${test_dir} ${build_dir}/exp/make_mfcc/test ${mfcc_dir}
+    steps/compute_cmvn_stats.sh ${test_dir} ${build_dir}/exp/make_mfcc/test ${mfcc_dir}
+    utils/fix_data_dir.sh ${test_dir}
 #
 #
 #    # Mono training

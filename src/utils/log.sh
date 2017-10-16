@@ -53,7 +53,7 @@ log() {
                 newline="\n"
                 ;;
             t)
-                timestamp="[$(date '+%Y-%m-%d %H:%M:%S')]"
+                timestamp="[$(date '+%Y-%m-%d %H:%M:%S,%3N')]"
                 ;;
             u)
                 print_usage
