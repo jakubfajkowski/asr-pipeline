@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-source ./scripts/utils/log.sh
-source ./scripts/utils/run.sh
+source ./src/utils/log.sh
+source ./src/utils/run.sh
 
 readonly SCRIPT_NAME="$(realpath ${0})"
 readonly SCRIPT_DIR="$(dirname ${SCRIPT_NAME})"
@@ -11,8 +11,8 @@ readonly CONFIG_NAME=${1}
 main() {
     load_dependencies
 
-    corpus_dir="${CORPORA_DIR}/${corpus_lang}/${corpus_name}"
-    build_dir="${BUILDS_DIR}/${corpus_name}/${corpus_name}"
+    corpus_audio_dir="${CORPORA_AUDIO_DIR}/${lang}/${corpus_audio_name}"
+    build_dir="${BUILDS_DIR}/${corpus_audio_name}/${corpus_audio_name}"
 
     exp_dir="${build_dir}/exp"
     data_dir="${build_dir}/data"
@@ -62,11 +62,10 @@ prepare_build_dir() {
 
 split_data() {
     run "Splitting audio data to test and train sets..." \
-    make_split.py --data-dir "${data_dir}" --split-ratio "${split_ratio}" ${corpus_dir}/*
+    make_split.py --data-dir "${data_dir}" --split-ratio "${split_ratio}" ${corpus_audio_dir}/*
 }
 
 prepare_data() {
-    lang=$(echo ${corpus_lang} | cut -d '-' -f1)
     spk2gender="spk2gender"
     text="text"
     wav_scp="wav.scp"
@@ -89,7 +88,7 @@ prepare_data() {
     make_words.py "${dir}/${text}" > "${dir}/${words}"
 
     run "Generating grapheme to phoneme mapping..." \
-    ${TOOLS_DIR}/multilingual-g2p/g2p.sh -w "${dir}/${words}" -l "${lang}" > "${dir}/${lexicon_txt}"
+    ${TOOLS_DIR}/multilingual-g2p/g2p.sh -w "${dir}/${words}" -l "$(echo ${lang} | cut -d '-' -f1)" > "${dir}/${lexicon_txt}"
 
     run "Preparing utt2spk..." \
     make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
@@ -99,7 +98,7 @@ prepare_local() {
     mkdir "${local_dir}/dict"
 
     run "Preparing corpus..." \
-    make_corpus.sh "${corpus_dir}/*/*transcription.tsv" > "${local_dir}/corpus.txt"
+    make_corpus.sh "${corpus_audio_dir}/*/*transcription.tsv" > "${local_dir}/corpus.txt"
 
     run "Preparing silence phones..." \
     make_silence_phones.sh > "${local_dir}/dict/silence_phones.txt"

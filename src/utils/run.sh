@@ -11,7 +11,7 @@ run() {
 
     log -int "${log_message}"
     log -xnt "$@"
-    if "$@" 2>> ${LOG}; then
+    if "$@" 2> >(tee -a ${LOG} >&2); then
         log -dnt "${log_message}"
     else
         log -ent "${log_message}"
