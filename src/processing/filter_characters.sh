@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 
 whitelist="a-zA-ZąĄćĆęĘłŁńŃóÓśŚźŹżŻ"
-tr -cd "${whitelist}"
+special=" \n"
+
+tr -cd "${whitelist}${special}"

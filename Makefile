@@ -18,8 +18,9 @@ export
 $(info Language: $(lang))
 $(info Version: $(version))
 
-build_dir := $(BUILDS_DIR)/$(lang)/$(corpus_audio_name)
+build_dir := $(BUILDS_DIR)/$(lang)/$(version)
 corpus_audio_dir := $(CORPORA_AUDIO_DIR)/$(lang)/$(corpus_audio_name)
+corpus_text_dir := $(CORPORA_TEXT_DIR)/$(lang)/$(corpus_text_name)
 
 exp_dir := $(build_dir)/exp
 data_dir := $(build_dir)/data
@@ -116,10 +117,10 @@ local: $(dict_dir)
 $(corpus): $(local_dir)/$(corpus)
 $(local_dir)/$(corpus):
 	run.sh "Preparing corpus..." \
-	make_corpus.sh "$(corpus_audio_dir)/*/*transcription.tsv" > $@
+	make_corpus.sh $(corpus_audio_dir)/*/*transcription.tsv $(corpus_text_dir)/corpus.txt > $@
 
 $(local_dir)/lm.arpa: $(corpus)
-	ngram-count -order 1 -wbdiscount -text "$(local_dir)/corpus.txt" -lm "$(local_dir)/lm.arpa"
+	ngram-count -order $(ngram_order) -wbdiscount -text "$(local_dir)/corpus.txt" -lm "$(local_dir)/lm.arpa"
 
 $(dict_dir): $(silence_phones) $(optional_silence) $(nonsilence_phones) $(lexicon) $(local_dir)/lm.arpa
 
@@ -152,24 +153,24 @@ lang-preparation:
 	utils/prepare_lang.sh "$(local_dir)/dict" "<UNK>" "$(local_dir)/lang" "$(lang_dir)"
 	
 $(lang_dir)/G.fst: lang-preparation
-	arpa2fst --disambig-symbol="#0" --read-symbol-table="$(lang_dir)/words.txt" "$(local_dir)/lm.arpa" "$(lang_dir)/G.fst"
+	arpa2fst --disambig-symbol="#0" "$(local_dir)/lm.arpa" "$(lang_dir)/G.fst"
 
 ########################################################################################################################
 # EXP DIR
 ########################################################################################################################
 mono-model:
-#	train_mono.sh --nj 4 --cmd "$(train_cmd)" --totgauss 400 \
-#	$(train_dir) $(lang_dir) $(build_dir)/exp/mono
-#
-#	mkgraph.sh $(lang_dir) $(exp_dir)/mono $(exp_dir)/mono/graph
-#
-#	decode_offline.sh --nj 1 --cmd "$(decode_cmd)" --skip-scoring true \
-#	$(exp_dir)/mono/graph $(test_dir) $(build_dir)/exp/mono/offline
-#
-#	score_kaldi_wer.sh --cmd "$(decode_cmd)" \
-#	$(test_dir) $(exp_dir)/mono/graph $(build_dir)/exp/mono/offline
-#
-#	prepare_online_decoding.sh $(train_dir) $(lang_dir) $(exp_dir)/mono $(build_dir)/exp/mono/online
+	train_mono.sh --nj 4 --cmd "$(train_cmd)" --totgauss 400 \
+	$(train_dir) $(lang_dir) $(build_dir)/exp/mono
+
+	mkgraph.sh $(lang_dir) $(exp_dir)/mono $(exp_dir)/mono/graph
+
+	decode_offline.sh --nj 1 --cmd "$(decode_cmd)" --skip-scoring true \
+	$(exp_dir)/mono/graph $(test_dir) $(build_dir)/exp/mono/offline
+
+	score_kaldi_wer.sh --cmd "$(decode_cmd)" \
+	$(test_dir) $(exp_dir)/mono/graph $(build_dir)/exp/mono/offline
+
+	prepare_online_decoding.sh $(train_dir) $(lang_dir) $(exp_dir)/mono $(build_dir)/exp/mono/online
 
 	decode_online.sh --nj 1 --cmd "$(decode_cmd)" --skip-scoring true \
 	$(exp_dir)/mono/graph $(test_dir) $(build_dir)/exp/mono/online
