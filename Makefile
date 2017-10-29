@@ -6,21 +6,19 @@ SHELL := /bin/bash
 $(info Including settings file.)
 include settings.cfg
 
-ifndef config
-    $(error No config file specified!)
+ifndef recipe
+    $(error No recipe specified!)
 endif
 
-$(info Including config file: $(config))
-include $(config)
-export
+$(info Including recipe: $(RECIPES_DIR)/$(recipe))
+include $(RECIPES_DIR)/$(recipe)
 
 
 $(info Language: $(lang))
 $(info Version: $(version))
 
 build_dir := $(BUILDS_DIR)/$(lang)/$(version)
-corpus_audio_dir := $(CORPORA_AUDIO_DIR)/$(lang)/$(corpus_audio_name)
-corpus_text_dir := $(CORPORA_TEXT_DIR)/$(lang)/$(corpus_text_name)
+corpus_dir := $(CORPORA_DIR)/$(lang)/$(corpus_name)
 
 exp_dir := $(build_dir)/exp
 data_dir := $(build_dir)/data
@@ -44,7 +42,7 @@ nonsilence_phones := nonsilence_phones.txt
 optional_silence := optional_silence.txt
 
 export LOG := $(build_dir)/LOG
-export PATH := $(shell find src -type d -printf "%p:"):$(PATH)
+export PATH := $(shell find sources -type d -printf "%p:"):$(shell find $(TOOLS_DIR) -type d -printf "%p:"):$(PATH)
 
 train_cmd := utils/run.pl
 decode_cmd := utils/run.pl
@@ -67,12 +65,12 @@ dirs:
 data: $(train_dir) $(test_dir)
 split:
 	run.sh "Splitting corpus data to test and train sets..." \
-	make_split.py -d $(data_dir) -s $(split_ratio) $(corpus_audio_dir)/*
+	make_split.py -d $(data_dir) -s $(split_ratio) $(corpus_dir)/*
 
 $(data_dir)/%: $(spk2gender) $(wav_scp) $(text) $(words) $(lexicon) $(utt2spk) $(spk2utt)
-	steps/make_mfcc.sh --nj 1 $@ $@/log $@/features
-	steps/compute_cmvn_stats.sh $@ $@/log $@/features
-	utils/fix_data_dir.sh $@
+	make_mfcc.sh --nj 1 $@ $@/log $@/features
+	compute_cmvn_stats.sh $@ $@/log $@/features
+	fix_data_dir.sh $@
 
 $(spk2gender): $(train_dir)/$(spk2gender) $(test_dir)/$(spk2gender)
 $(data_dir)/%/$(spk2gender): split
@@ -107,7 +105,7 @@ $(data_dir)/%/$(utt2spk): split
 $(spk2utt): $(train_dir)/$(spk2utt) $(test_dir)/$(spk2utt)
 $(data_dir)/%/$(spk2utt): $(data_dir)/%/$(utt2spk)
 	run.sh "Preparing spk2utt..." \
-	utils/utt2spk_to_spk2utt.pl "$(dir $@)/$(utt2spk)" > $@
+	make_spk2utt.pl "$(dir $@)/$(utt2spk)" > $@
 
 ########################################################################################################################
 # LOCAL DIR
@@ -117,7 +115,7 @@ local: $(dict_dir)
 $(corpus): $(local_dir)/$(corpus)
 $(local_dir)/$(corpus):
 	run.sh "Preparing corpus..." \
-	make_corpus.sh $(corpus_audio_dir)/*/*transcription.tsv $(corpus_text_dir)/corpus.txt > $@
+	make_corpus.sh $(corpus_dir)/*/*transcription.tsv > $@
 
 $(local_dir)/lm.arpa: $(corpus)
 	ngram-count -order $(ngram_order) -wbdiscount -text "$(local_dir)/corpus.txt" -lm "$(local_dir)/lm.arpa"

@@ -1,0 +1,5 @@
+lang="pl-PL"
+version="0.0.1"
+ngram_order=1
+corpus_train="/home/${USER}/Music/train"
+corpus_test="/home/${USER}/Music/test"
