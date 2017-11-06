@@ -21,6 +21,7 @@ main() {
     lang_dir="${build_dir}/lang"
     local_dir="${build_dir}/local"
     dict_dir="${local_dir}/dict"
+    log_dir="${build_dir}/log"
     
     corpus="corpus.txt"
     spk2gender="spk2gender"
@@ -49,8 +50,8 @@ load_file() {
 }
 
 prepare_build_dir() {
-    execute "Cleaning build directory: ${build_dir}" \
-    rm -rf ${build_dir}
+#    execute "Cleaning build directory: ${build_dir}" \
+#    rm -rf ${build_dir}
 
     execute "Build directory is: ${build_dir}" \
     mkdir -p ${build_dir}
@@ -62,6 +63,7 @@ prepare_build_dir() {
     mkdir -p ${mfcc_dir}
     mkdir -p ${lang_dir}
     mkdir -p ${local_dir}
+    mkdir -p ${log_dir}
 }
 
 copy_data() {
@@ -72,30 +74,32 @@ copy_data() {
 prepare_data() {
     dir=${1}
 
-    execute "Generating speaker to gender mapping..." \
-    ./local/make_spk2gender.py "${dir}/[MF]???" > "${dir}/${spk2gender}"
+#    execute "Generating speaker to gender mapping..." \
+#    ./local/make_spk2gender.py "${dir}/[MF]???" > "${dir}/${spk2gender}"
+#
+#    execute "Generating utterance id to wav file mapping..." \
+#    ./local/make_wav_scp.py "${dir}/*/*.wav" > "${dir}/${wav_scp}"
+#
+#    execute "Joining all text files..." \
+#    ./local/make_text.sh "${dir}/*/*transcription.tsv" > "${dir}/${text}"
+#
+#    execute "Tokenizing words used in utterances..." \
+#    ./local/make_words.py "${dir}/${text}" > "${dir}/${words}"
+#
+#    execute "Generating grapheme to phoneme mapping..." \
+#    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" > "${dir}/${lexicon_txt}"
+#
+#    execute "Preparing utt2spk..." \
+#    ./local/make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
+#
+#    execute "Preparing spk2utt..." \
+#	./utils/utt2spk_to_spk2utt.pl "${dir}/${utt2spk}" > "${dir}/${spk2utt}"
 
-    execute "Generating utterance id to wav file mapping..." \
-    ./local/make_wav_scp.py "${dir}/*/*.wav" > "${dir}/${wav_scp}"
+    execute "Preparing MFCC features..." \
+    steps/features/mfcc.sh --log-dir ${log_dir} ${dir}
 
-    execute "Joining all text files..." \
-    ./local/make_text.sh "${dir}/*/*transcription.tsv" > "${dir}/${text}"
-
-    execute "Tokenizing words used in utterances..." \
-    ./local/make_words.py "${dir}/${text}" > "${dir}/${words}"
-
-    execute "Generating grapheme to phoneme mapping..." \
-    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" > "${dir}/${lexicon_txt}"
-
-    execute "Preparing utt2spk..." \
-    ./local/make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
-
-    execute "Preparing spk2utt..." \
-	./utils/utt2spk_to_spk2utt.pl "${dir}/${utt2spk}" > "${dir}/${spk2utt}"
-
-    steps/make_mfcc.sh --nj 1 ${dir} ${dir}/log ${mfcc_dir}
-	steps/compute_cmvn_stats.sh ${dir} ${dir}/log ${mfcc_dir}
-	utils/fix_data_dir.sh ${dir}
+    execute "Computing CMVN stats..." \
+	steps/statistics/cmvn.sh --log-dir ${log_dir} ${dir}
 }
 
 prepare_local() {
@@ -118,7 +122,9 @@ prepare_local() {
 }
 
 build_model() {
+    execute "Preparing ${ngram_order}-gram language model..." \
     ngram-count -order ${ngram_order} -wbdiscount -text "${local_dir}/corpus.txt" -lm "${local_dir}/lm.arpa"
+
 	utils/prepare_lang.sh "${local_dir}/dict" "<UNK>" "${local_dir}/lang" "${lang_dir}"
 	arpa2fst --disambig-symbol="#0" "${local_dir}/lm.arpa" "${lang_dir}/G.fst"
 
