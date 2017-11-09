@@ -72,9 +72,6 @@ copy_data() {
 prepare_data() {
     dir=${1}
 
-    execute "Generating speaker to gender mapping..." \
-    ./local/make_spk2gender.py "${dir}/[MF]???" > "${dir}/${spk2gender}"
-
     execute "Generating utterance id to wav file mapping..." \
     ./local/make_wav_scp.py "${dir}/*/*.wav" > "${dir}/${wav_scp}"
 
@@ -120,23 +117,73 @@ prepare_local() {
 build_model() {
     ngram-count -order ${ngram_order} -wbdiscount -text "${local_dir}/corpus.txt" -lm "${local_dir}/lm.arpa"
 	utils/prepare_lang.sh "${local_dir}/dict" "<UNK>" "${local_dir}/lang" "${lang_dir}"
-	arpa2fst --disambig-symbol="#0" "${local_dir}/lm.arpa" "${lang_dir}/G.fst"
+	arpa2fst --disambig-symbol="#0" --read-symbol-table="${lang_dir}/words.txt" "${local_dir}/lm.arpa" "${lang_dir}/G.fst"
 
-	steps/train_mono.sh --nj 4 --totgauss 400 ${train_dir} ${lang_dir} ${exp_dir}/mono
+    echo "Train monophone models on full data -> may be wastefull (can be done on subset)"
+    steps/train_mono.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono/graph
     steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono
     score ${exp_dir}/mono
 
-    steps/align_si.sh --nj 1 ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono_aligned
-	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono_aligned ${exp_dir}/mono_aligned/graph
-    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/mono_aligned ${exp_dir}/mono_aligned
-    score ${exp_dir}/mono_aligned
+    echo "Get alignments from monophone system."
+    steps/align_si.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono_ali || exit 1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/mono_ali/graph
+    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/mono_ali
+    score ${exp_dir}/mono_ali
 
-    steps/train_deltas.sh 2000 11000 ${train_dir} ${lang_dir} ${exp_dir}/mono_aligned ${exp_dir}/tri
-    utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri ${exp_dir}/tri/graph
-    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri ${exp_dir}/tri
-    score ${exp_dir}/tri
+    echo "Train tri1 [first triphone pass]"
+    steps/train_deltas.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/tri1 || exit 1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1/graph
+    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1
+    score ${exp_dir}/tri1
 
+#    echo "Align tri1"
+#    steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1_ali || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri1_ali/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri1_ali
+#    score ${exp_dir}/tri1_ali
+#
+#    echo "Train tri2a [delta+delta-deltas]"
+#    steps/train_deltas.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2a || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a
+#    score ${exp_dir}/tri2a
+#
+#    echo "Train tri2b [LDA+MLLT]"
+#    steps/train_lda_mllt.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2b || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b
+#    score ${exp_dir}/tri2b
+#
+#    echo "Align all data with LDA+MLLT system (tri2b)"
+#    steps/align_si.sh  --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_ali || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali
+#    score ${exp_dir}/tri2b_ali
+#
+#    echo "Train MMI on top of LDA+MLLT."
+#    steps/make_denlats.sh  --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_denlats || exit 1
+#    steps/train_mmi.sh  ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mmi || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mmi ${exp_dir}/tri2b_mmi/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mmi ${exp_dir}/tri2b_mmi
+#    score ${exp_dir}/tri2b_mmi
+#
+#    echo "Train MMI on top of LDA+MLLT with boosting. train_mmi_boost is a e.g. 0.05"
+#    steps/train_mmi.sh  --boost ${train_mmi_boost} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mmi_b${train_mmi_boost} || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mmi_b${train_mmi_boost} ${exp_dir}/tri2b_mmi_b${train_mmi_boost}/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mmi_b${train_mmi_boost} ${exp_dir}/tri2b_mmi_b${train_mmi_boost}
+#    score ${exp_dir}/tri2b_mmi_b${train_mmi_boost}
+#
+#    echo "Train MPE."
+#    steps/train_mpe.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mpe || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mpe ${exp_dir}/tri2b_mpe/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mpe ${exp_dir}/tri2b_mpe
+#    score ${exp_dir}/tri2b_mpe
+#
+#    steps/train_sat.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri3b || exit 1
+#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b/graph
+#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b
+#    score ${exp_dir}/tri3b
 }
 
 score() {
