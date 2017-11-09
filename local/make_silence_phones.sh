@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-echo "sil"
-echo "spn"
+echo "SIL"
+echo "SPN"

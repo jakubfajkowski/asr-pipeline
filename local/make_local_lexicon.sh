@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-echo -e "<UNK>\tspn"
+echo -e "<UNK>\tSPN"
 cat $@ | sort -u

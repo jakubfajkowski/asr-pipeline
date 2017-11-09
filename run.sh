@@ -26,8 +26,8 @@ main() {
     spk2gender="spk2gender"
     text="text"
     wav_scp="wav.scp"
-    words="words"
-    lexicon_txt="lexicon.txt"
+    words="words.txt"
+    lexicon="lexicon.txt"
     utt2spk="utt2spk"
     spk2utt="spk2utt"
     silence_phones="silence_phones.txt"
@@ -73,16 +73,19 @@ prepare_data() {
     dir=${1}
 
     execute "Generating utterance id to wav file mapping..." \
-    ./local/make_wav_scp.py "${dir}/*/*.wav" > "${dir}/${wav_scp}"
+    ./local/make_wav_scp.sh "${dir}/*/*.wav" > "${dir}/${wav_scp}"
 
     execute "Joining all text files..." \
     ./local/make_text.sh "${dir}/*/*transcription.tsv" > "${dir}/${text}"
 
+    execute "Preparing corpus..." \
+    ./local/make_data_corpus.sh "${dir}/${text}" > "${dir}/${corpus}"
+
     execute "Tokenizing words used in utterances..." \
-    ./local/make_words.py "${dir}/${text}" > "${dir}/${words}"
+    ./local/make_words.sh "${lang}" "${dir}/${corpus}" > "${dir}/${words}"
 
     execute "Generating grapheme to phoneme mapping..." \
-    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" > "${dir}/${lexicon_txt}"
+    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" > "${dir}/${lexicon}"
 
     execute "Preparing utt2spk..." \
     ./local/make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
@@ -98,9 +101,6 @@ prepare_data() {
 prepare_local() {
     mkdir "${local_dir}/dict"
 
-    execute "Preparing corpus..." \
-    ./local/make_corpus.sh "${train_dir}/${text}" "${test_dir}/${text}" > "${local_dir}/corpus.txt"
-
     execute "Preparing silence phones..." \
     ./local/make_silence_phones.sh > "${local_dir}/dict/silence_phones.txt"
 
@@ -109,6 +109,9 @@ prepare_local() {
 
     execute "Preparing nonsilence phones..." \
     ./local/make_nonsilence_phones.sh ${data_dir}/*/lexicon.txt > "${local_dir}/dict/nonsilence_phones.txt"
+
+    execute "Preparing corpus..." \
+    ./local/make_local_corpus.sh ${data_dir}/*/${corpus} > "${local_dir}/${corpus}"
 
     execute "Preparing lexicon..." \
     ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt > "${local_dir}/dict/lexicon.txt"
