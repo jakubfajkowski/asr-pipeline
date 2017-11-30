@@ -1,10 +1,13 @@
 lang="pl-PL"
-version="0.0.5"
-ngram_order=2
+version="0.0.2"
+ngram_order=3
 
 corpus_train="/home/${USER}/Music/train"
 corpus_test="/home/${USER}/Music/test"
 
-hidden_states_number=2000
-gaussians_number=10000
+# Available feature types: fbank, mfcc, plp.
+feature_type="mfcc"
+
+hidden_states_number=128
+gaussians_number=1024
 train_mmi_boost=0.05

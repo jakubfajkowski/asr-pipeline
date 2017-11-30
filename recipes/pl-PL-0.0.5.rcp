@@ -1,12 +1,12 @@
 lang="pl-PL"
-version="0.0.3"
+version="0.0.5"
 ngram_order=3
 
 corpus_train="/home/${USER}/Music/train"
 corpus_test="/home/${USER}/Music/test"
 
 # Available feature types: fbank, mfcc, plp.
-feature_type="mfcc"
+feature_type="plp"
 
 hidden_states_number=256
 gaussians_number=2048

@@ -2,47 +2,27 @@
 
 source ./path.sh
 source $(which log.sh)
-source $(which execute.sh)
 
 readonly SCRIPT_NAME="$(realpath ${0})"
 readonly SCRIPT_DIR="$(dirname ${SCRIPT_NAME})"
 readonly RECIPE_NAME=${1}
 
-main() {
-    load_file "${RECIPES_ROOT}/${RECIPE_NAME}"
+execute() {
+    set -o pipefail
+    log_message="${1}"; shift
 
-    build_dir="${BUILDS_ROOT}/${lang}/${version}"
-    export LOG="${build_dir}/LOG"
-    exp_dir="${build_dir}/exp"
-    data_dir="${build_dir}/data"
-    test_dir="${data_dir}/test"
-    train_dir="${data_dir}/train"
-    mfcc_dir="${build_dir}/mfcc"
-    lang_dir="${build_dir}/lang"
-    local_dir="${build_dir}/local"
-    dict_dir="${local_dir}/dict"
-    
-    corpus="corpus.txt"
-    spk2gender="spk2gender"
-    text="text"
-    wav_scp="wav.scp"
-    words="words.txt"
-    lexicon="lexicon.txt"
-    utt2spk="utt2spk"
-    spk2utt="spk2utt"
-    silence_phones="silence_phones.txt"
-    nonsilence_phones="nonsilence_phones.txt"
-    optional_silence="optional_silence.txt"
-
-    prepare_build_dir
-    copy_data
-    prepare_data ${train_dir}
-    prepare_data ${test_dir}
-    prepare_local
-    build_model
+    log -int "${log_message}"
+    log -xnt "$@"
+    if "$@" 2> >(tee -a ${LOG} >&2); then
+        log -dnt "${log_message}"
+    else
+        log -ent "${log_message}"
+        log -ent "Log path: ${LOG}"
+        exit 1
+    fi
 }
 
-load_file() {
+load_recipe() {
     file=${1}
     log.sh -itn "Loading ${file}"
     source ${file} || exit 1
@@ -59,7 +39,6 @@ prepare_build_dir() {
     mkdir -p ${data_dir}
     mkdir -p ${test_dir}
     mkdir -p ${train_dir}
-    mkdir -p ${mfcc_dir}
     mkdir -p ${lang_dir}
     mkdir -p ${local_dir}
 }
@@ -69,7 +48,7 @@ copy_data() {
     cp -r ${corpus_test}/* ${test_dir}
 }
 
-prepare_data() {
+prepare_audio_data() {
     dir=${1}
 
     execute "Generating utterance id to wav file mapping..." \
@@ -93,12 +72,24 @@ prepare_data() {
     execute "Preparing spk2utt..." \
 	./utils/utt2spk_to_spk2utt.pl "${dir}/${utt2spk}" > "${dir}/${spk2utt}"
 
-    steps/make_mfcc.sh --nj 1 ${dir} ${dir}/log ${mfcc_dir}
-	steps/compute_cmvn_stats.sh ${dir} ${dir}/log ${mfcc_dir}
+
+    case ${feature_type} in
+    fbank)
+        steps/make_fbank.sh --nj 1 ${dir} ${dir}/log ${dir}
+        ;;
+    mfcc)
+        steps/make_mfcc.sh --nj 1 ${dir} ${dir}/log ${dir}
+        ;;
+    plp)
+        steps/make_plp.sh --nj 1 ${dir} ${dir}/log ${dir}
+        ;;
+    esac
+
+	steps/compute_cmvn_stats.sh ${dir} ${dir}/log ${dir}
 	utils/fix_data_dir.sh ${dir}
 }
 
-prepare_local() {
+prepare_language_data() {
     mkdir "${local_dir}/dict"
 
     execute "Preparing silence phones..." \
@@ -117,76 +108,44 @@ prepare_local() {
     ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt > "${local_dir}/dict/lexicon.txt"
 }
 
-build_model() {
+training() {
     ngram-count -order ${ngram_order} -wbdiscount -text "${local_dir}/corpus.txt" -lm "${local_dir}/lm.arpa"
 	utils/prepare_lang.sh "${local_dir}/dict" "<UNK>" "${local_dir}/lang" "${lang_dir}"
 	arpa2fst --disambig-symbol="#0" --read-symbol-table="${lang_dir}/words.txt" "${local_dir}/lm.arpa" "${lang_dir}/G.fst"
 
-    echo "Train monophone models on full data -> may be wastefull (can be done on subset)"
+    log -int "Training monophone model."
     steps/train_mono.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono || exit 1
-	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono/graph
-    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono
-    score ${exp_dir}/mono
-
-    echo "Get alignments from monophone system."
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono/graph || exit 1
     steps/align_si.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono_ali || exit 1
-	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/mono_ali/graph
-    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/mono_ali
-    score ${exp_dir}/mono_ali
+    log -dnt "Training monophone model."
 
-    echo "Train tri1 [first triphone pass]"
+    log -int "Training triphone model (deltas)."
     steps/train_deltas.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/tri1 || exit 1
-	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1/graph
-    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1
-    score ${exp_dir}/tri1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1/graph || exit 1
+    steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1_ali || exit 1
+    log -int "Training triphone model (deltas)."
 
-#    echo "Align tri1"
-#    steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1_ali || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri1_ali/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri1_ali
-#    score ${exp_dir}/tri1_ali
-#
-#    echo "Train tri2a [delta+delta-deltas]"
-#    steps/train_deltas.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2a || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a
-#    score ${exp_dir}/tri2a
-#
-#    echo "Train tri2b [LDA+MLLT]"
-#    steps/train_lda_mllt.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2b || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b
-#    score ${exp_dir}/tri2b
-#
-#    echo "Align all data with LDA+MLLT system (tri2b)"
-#    steps/align_si.sh  --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_ali || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali
-#    score ${exp_dir}/tri2b_ali
-#
-#    echo "Train MMI on top of LDA+MLLT."
-#    steps/make_denlats.sh  --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_denlats || exit 1
-#    steps/train_mmi.sh  ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mmi || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mmi ${exp_dir}/tri2b_mmi/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mmi ${exp_dir}/tri2b_mmi
-#    score ${exp_dir}/tri2b_mmi
-#
-#    echo "Train MMI on top of LDA+MLLT with boosting. train_mmi_boost is a e.g. 0.05"
-#    steps/train_mmi.sh  --boost ${train_mmi_boost} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mmi_b${train_mmi_boost} || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mmi_b${train_mmi_boost} ${exp_dir}/tri2b_mmi_b${train_mmi_boost}/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mmi_b${train_mmi_boost} ${exp_dir}/tri2b_mmi_b${train_mmi_boost}
-#    score ${exp_dir}/tri2b_mmi_b${train_mmi_boost}
-#
-#    echo "Train MPE."
-#    steps/train_mpe.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_denlats ${exp_dir}/tri2b_mpe || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b_mpe ${exp_dir}/tri2b_mpe/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_mpe ${exp_dir}/tri2b_mpe
-#    score ${exp_dir}/tri2b_mpe
-#
-#    steps/train_sat.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri3b || exit 1
-#	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b/graph
-#    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b
-#    score ${exp_dir}/tri3b
+    log -int "Training triphone model (deltas and delta-deltas)."
+    steps/train_deltas.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2a || exit 1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a/graph || exit 1
+    log -dnt "Training triphone model (deltas and delta-deltas)."
+
+    log -int "Training triphone model (LDA and MLLT)."
+    steps/train_lda_mllt.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2b || exit 1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b/graph || exit 1
+    steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_ali || exit 1
+    log -dnt "Training triphone model (LDA and MLLT)."
+
+    log -int "Training triphone model (SAT)."
+    steps/train_sat.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri3b || exit 1
+	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b/graph || exit 1
+    log -dnt "Training triphone model (SAT)."
+}
+
+evaluation() {
+    for model_dir in ${exp_dir}/*; do
+        score ${model_dir}
+    done
 }
 
 score() {
@@ -197,10 +156,69 @@ score() {
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/offline
 
+    steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${model_dir} ${model_dir}
 	steps/online/decode.sh --nj 1 --skip-scoring true \
 	${model_dir}/graph ${test_dir} ${model_dir}/online
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/online
+}
+
+score_nnet2() {
+    model_dir=${1}
+
+#    steps/nnet2/decode.sh --nj 1 --skip-scoring true \
+#	${model_dir}/graph ${test_dir} ${model_dir}/offline
+#	steps/score_kaldi.sh \
+#	${test_dir} ${model_dir}/graph ${model_dir}/offline
+
+    steps/online/nnet2/prepare_online_decoding.sh ${lang_dir} ${model_dir} ${model_dir}_online
+    utils/mkgraph.sh ${lang_dir} ${model_dir}_online ${model_dir}_online/graph || exit 1
+	steps/online/nnet2/decode.sh --nj 1 --skip-scoring true \
+	${model_dir}/graph ${test_dir} ${model_dir}_online/decode
+	steps/score_kaldi.sh \
+	${test_dir} ${model_dir}/graph ${model_dir}_online/decode
+}
+
+main() {
+    if [ -s ${RECIPE_NAME} ]; then
+        load_recipe ${RECIPE_NAME}
+    else
+        load_recipe ${RECIPES_ROOT}/${RECIPE_NAME}
+    fi
+
+    build_dir="${BUILDS_ROOT}/${lang}/${version}"
+    export LOG="${build_dir}/LOG"
+    exp_dir="${build_dir}/exp"
+    data_dir="${build_dir}/data"
+    test_dir="${data_dir}/test"
+    train_dir="${data_dir}/train"
+    lang_dir="${build_dir}/lang"
+    local_dir="${build_dir}/local"
+    dict_dir="${local_dir}/dict"
+
+    corpus="corpus.txt"
+    spk2gender="spk2gender"
+    text="text"
+    wav_scp="wav.scp"
+    words="words.txt"
+    lexicon="lexicon.txt"
+    utt2spk="utt2spk"
+    spk2utt="spk2utt"
+    silence_phones="silence_phones.txt"
+    nonsilence_phones="nonsilence_phones.txt"
+    optional_silence="optional_silence.txt"
+
+#    prepare_build_dir
+#    copy_data
+#    prepare_audio_data ${train_dir}
+#    prepare_audio_data ${test_dir}
+#    prepare_language_data
+#    training
+#    evaluation
+
+#    steps/nnet2/train_pnorm_fast.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/nnet2 || exit 1
+#    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet2 ${exp_dir}/nnet2/graph || exit 1
+    score_nnet2 ${exp_dir}/nnet2
 }
 
 main
