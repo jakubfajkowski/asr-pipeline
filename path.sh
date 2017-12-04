@@ -1,7 +1,7 @@
 export RECIPES_ROOT="./recipes"
 export BUILDS_ROOT="./builds"
 export TOOLS_ROOT="../tools"
-export KALDI_ROOT="/home/${USER}/kaldi"
+export KALDI_ROOT="/opt/kaldi"
 
 # Setting paths to useful tools
 PATH="$(find ${TOOLS_ROOT} -type d -printf "%p:"):${PATH}"
@@ -28,3 +28,5 @@ source "${KALDI_ROOT}/tools/env.sh"
 
 # Variable needed for proper data sorting
 export LC_ALL=C.UTF-8
+
+

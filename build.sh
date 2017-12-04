@@ -1,30 +1,15 @@
 #!/usr/bin/env bash
 
 source ./path.sh
-source $(which log.sh)
+source ./utils.sh
 
 readonly SCRIPT_NAME="$(realpath ${0})"
 readonly SCRIPT_DIR="$(dirname ${SCRIPT_NAME})"
 readonly RECIPE_NAME=${1}
 
-execute() {
-    set -o pipefail
-    log_message="${1}"; shift
-
-    log -int "${log_message}"
-    log -xnt "$@"
-    if "$@" 2> >(tee -a ${LOG} >&2); then
-        log -dnt "${log_message}"
-    else
-        log -ent "${log_message}"
-        log -ent "Log path: ${LOG}"
-        exit 1
-    fi
-}
-
 load_recipe() {
     file=${1}
-    log.sh -itn "Loading ${file}"
+    log -itn "Loading ${file}"
     source ${file} || exit 1
 }
 
@@ -166,10 +151,10 @@ score() {
 score_nnet2() {
     model_dir=${1}
 
-#    steps/nnet2/decode.sh --nj 1 --skip-scoring true \
-#	${model_dir}/graph ${test_dir} ${model_dir}/offline
-#	steps/score_kaldi.sh \
-#	${test_dir} ${model_dir}/graph ${model_dir}/offline
+    steps/nnet2/decode.sh --nj 1 --skip-scoring true \
+	${model_dir}/graph ${test_dir} ${model_dir}/offline
+	steps/score_kaldi.sh \
+	${test_dir} ${model_dir}/graph ${model_dir}/offline
 
     steps/online/nnet2/prepare_online_decoding.sh ${lang_dir} ${model_dir} ${model_dir}_online
     utils/mkgraph.sh ${lang_dir} ${model_dir}_online ${model_dir}_online/graph || exit 1
@@ -208,16 +193,16 @@ main() {
     nonsilence_phones="nonsilence_phones.txt"
     optional_silence="optional_silence.txt"
 
-#    prepare_build_dir
-#    copy_data
-#    prepare_audio_data ${train_dir}
-#    prepare_audio_data ${test_dir}
-#    prepare_language_data
-#    training
-#    evaluation
+    prepare_build_dir
+    copy_data
+    prepare_audio_data ${train_dir}
+    prepare_audio_data ${test_dir}
+    prepare_language_data
+    training
+    evaluation
 
-#    steps/nnet2/train_pnorm_fast.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/nnet2 || exit 1
-#    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet2 ${exp_dir}/nnet2/graph || exit 1
+    steps/nnet2/train_pnorm_fast.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/nnet2 || exit 1
+    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet2 ${exp_dir}/nnet2/graph || exit 1
     score_nnet2 ${exp_dir}/nnet2
 }
 
