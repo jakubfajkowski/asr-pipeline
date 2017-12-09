@@ -3,4 +3,4 @@
 words=${1}
 lang=${2}
 
-g2p.sh -w "${words}" -l "$(echo ${lang} | cut -d '-' -f1)"
+local/processing/g2p.sh ${lang} ${words}

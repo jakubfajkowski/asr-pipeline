@@ -148,17 +148,17 @@ score() {
 	${test_dir} ${model_dir}/graph ${model_dir}/online
 }
 
-score_nnet2() {
+score_nnet() {
     model_dir=${1}
 
-    steps/nnet2/decode.sh --nj 1 --skip-scoring true \
+    steps/nnet/decode.sh --nj 1 --skip-scoring true \
 	${model_dir}/graph ${test_dir} ${model_dir}/offline
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/offline
 
-    steps/online/nnet2/prepare_online_decoding.sh ${lang_dir} ${model_dir} ${model_dir}_online
+    steps/online/prepare_online_decoding.sh ${lang_dir} ${model_dir} ${model_dir}_online
     utils/mkgraph.sh ${lang_dir} ${model_dir}_online ${model_dir}_online/graph || exit 1
-	steps/online/nnet2/decode.sh --nj 1 --skip-scoring true \
+	steps/online/decode.sh --nj 1 --skip-scoring true \
 	${model_dir}/graph ${test_dir} ${model_dir}_online/decode
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}_online/decode
@@ -201,9 +201,9 @@ main() {
     training
     evaluation
 
-    steps/nnet2/train_pnorm_fast.sh ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/nnet2 || exit 1
-    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet2 ${exp_dir}/nnet2/graph || exit 1
-    score_nnet2 ${exp_dir}/nnet2
+    steps/train_nnet.sh ${train_dir} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali ${exp_dir}/nnet || exit 1
+    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet ${exp_dir}/nnet/graph || exit 1
+    score_nnet ${exp_dir}/nnet
 }
 
 main

@@ -1,6 +1,6 @@
 lang="pl-PL"
 version="0.0.1"
-ngram_order=3
+ngram_order=1
 
 corpus_train="/home/${USER}/Music/train"
 corpus_test="/home/${USER}/Music/test"
@@ -8,6 +8,6 @@ corpus_test="/home/${USER}/Music/test"
 # Available feature types: fbank, mfcc, plp.
 feature_type="mfcc"
 
-hidden_states_number=64
-gaussians_number=512
+hidden_states_number=256
+gaussians_number=2048
 train_mmi_boost=0.05

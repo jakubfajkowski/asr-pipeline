@@ -1,10 +1,8 @@
 export RECIPES_ROOT="./recipes"
 export BUILDS_ROOT="./builds"
-export TOOLS_ROOT="../tools"
 export KALDI_ROOT="/opt/kaldi"
 
 # Setting paths to useful tools
-PATH="$(find ${TOOLS_ROOT} -type d -printf "%p:"):${PATH}"
 PATH="${KALDI_ROOT}/src/bin:${PATH}"
 PATH="${KALDI_ROOT}/src/ivectorbin/:${PATH}"
 PATH="${KALDI_ROOT}/src/featbin/:${PATH}"
