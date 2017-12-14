@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-files=${1}
+lang=${1}; shift
+files=$@
 
 for file in ${files}; do
-    cat ${file} | perl -pe 's/<s> //' | perl -pe 's/ <\/s>//'
+    cat ${file} | perl -pe 's/<s> //' | perl -pe 's/ <\/s>//' | local/processing/case.py -l -f 2 | local/processing/filter_characters.py ${lang} -f 2
 done

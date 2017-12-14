@@ -40,10 +40,10 @@ prepare_audio_data() {
     ./local/make_wav_scp.sh "${dir}/*/*.wav" > "${dir}/${wav_scp}"
 
     execute "Joining all text files..." \
-    ./local/make_text.sh "${dir}/*/*transcription.tsv" > "${dir}/${text}"
+    ./local/make_text.sh "${lang}" "${dir}/*/*transcription.tsv" > "${dir}/${text}"
 
     execute "Preparing corpus..." \
-    ./local/make_data_corpus.sh "${dir}/${text}" > "${dir}/${corpus}"
+    ./local/make_data_corpus.sh "${lang}" "${dir}/${text}" > "${dir}/${corpus}"
 
     execute "Tokenizing words used in utterances..." \
     ./local/make_words.sh "${lang}" "${dir}/${corpus}" > "${dir}/${words}"
