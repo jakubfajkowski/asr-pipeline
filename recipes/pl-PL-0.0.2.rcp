@@ -4,6 +4,7 @@ ngram_order=3
 
 corpus_train="/home/${USER}/Music/train"
 corpus_test="/home/${USER}/Music/test"
+corpus_local="/home/${USER}/Music/local"
 
 # Available feature types: fbank, mfcc, plp.
 feature_type="mfcc"

@@ -31,6 +31,7 @@ prepare_build_dir() {
 copy_data() {
     cp -r ${corpus_train}/* ${train_dir}
     cp -r ${corpus_test}/* ${test_dir}
+    cp -r ${corpus_local}/* ${local_dir}
 }
 
 prepare_audio_data() {
@@ -75,7 +76,13 @@ prepare_audio_data() {
 }
 
 prepare_language_data() {
-    mkdir "${local_dir}/dict"
+    mkdir -p "${local_dir}/dict"
+
+    execute "Preparing corpus..." \
+    ./local/make_local_corpus.sh ${data_dir}/*/${corpus} ${local_dir}/${corpus} | sponge "${local_dir}/${corpus}"
+
+    execute "Preparing lexicon..." \
+    ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt ${local_dir}/dict/lexicon.txt | sponge "${local_dir}/dict/lexicon.txt"
 
     execute "Preparing silence phones..." \
     ./local/make_silence_phones.sh > "${local_dir}/dict/silence_phones.txt"
@@ -84,16 +91,10 @@ prepare_language_data() {
     ./local/make_optional_silence.sh > "${local_dir}/dict/optional_silence.txt"
 
     execute "Preparing nonsilence phones..." \
-    ./local/make_nonsilence_phones.sh ${data_dir}/*/lexicon.txt > "${local_dir}/dict/nonsilence_phones.txt"
-
-    execute "Preparing corpus..." \
-    ./local/make_local_corpus.sh ${data_dir}/*/${corpus} > "${local_dir}/${corpus}"
-
-    execute "Preparing lexicon..." \
-    ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt > "${local_dir}/dict/lexicon.txt"
+    ./local/make_nonsilence_phones.sh ${local_dir}/dict/silence_phones.txt ${local_dir}/dict/lexicon.txt > "${local_dir}/dict/nonsilence_phones.txt"
 }
 
-training() {
+train_gmm() {
     ngram-count -order ${ngram_order} -wbdiscount -text "${local_dir}/corpus.txt" -lm "${local_dir}/lm.arpa"
 	utils/prepare_lang.sh "${local_dir}/dict" "<UNK>" "${local_dir}/lang" "${lang_dir}"
 	arpa2fst --disambig-symbol="#0" --read-symbol-table="${lang_dir}/words.txt" "${local_dir}/lm.arpa" "${lang_dir}/G.fst"
@@ -127,7 +128,7 @@ training() {
     log -dnt "Training triphone model (SAT)."
 }
 
-evaluation() {
+score_gmm() {
     for model_dir in ${exp_dir}/*; do
         score ${model_dir}
     done
@@ -146,22 +147,6 @@ score() {
 	${model_dir}/graph ${test_dir} ${model_dir}/online
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/online
-}
-
-score_nnet() {
-    model_dir=${1}
-
-    steps/nnet/decode.sh --nj 1 --skip-scoring true \
-	${model_dir}/graph ${test_dir} ${model_dir}/offline
-	steps/score_kaldi.sh \
-	${test_dir} ${model_dir}/graph ${model_dir}/offline
-
-    steps/online/prepare_online_decoding.sh ${lang_dir} ${model_dir} ${model_dir}_online
-    utils/mkgraph.sh ${lang_dir} ${model_dir}_online ${model_dir}_online/graph || exit 1
-	steps/online/decode.sh --nj 1 --skip-scoring true \
-	${model_dir}/graph ${test_dir} ${model_dir}_online/decode
-	steps/score_kaldi.sh \
-	${test_dir} ${model_dir}/graph ${model_dir}_online/decode
 }
 
 main() {
@@ -198,12 +183,9 @@ main() {
     prepare_audio_data ${train_dir}
     prepare_audio_data ${test_dir}
     prepare_language_data
-    training
-    evaluation
 
-    steps/train_nnet.sh ${train_dir} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri2b_ali ${exp_dir}/nnet || exit 1
-    utils/mkgraph.sh ${lang_dir} ${exp_dir}/nnet ${exp_dir}/nnet/graph || exit 1
-    score_nnet ${exp_dir}/nnet
+    train_gmm
+    score_gmm
 }
 
 main

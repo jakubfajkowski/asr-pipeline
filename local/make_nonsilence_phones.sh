@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
-cat $@ | cut -f 2 | tr ' ' '\n' | sed "/^\s*$/d"|  sort -u
+silence_phones=${1}; shift
+
+grep -v -f ${silence_phones} $@ | cut -f 2 | tr ' ' '\n' | sed "/^\s*$/d"|  sort -u

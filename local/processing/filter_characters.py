@@ -4,10 +4,10 @@ import re
 import sys
 
 FILTERS = {
-    'pl-PL': r'[^ a-zA-ZąĄćĆęĘłŁńŃóÓśŚźŹżŻ]'
+    'pl-PL': r'[^a-zA-ZąĄćĆęĘłŁńŃóÓśŚźŹżŻ -]'
 }
 
-SEPARATORS = '[ -]'
+SEPARATORS = '[ -]+'
 
 
 def parse_args():
@@ -26,8 +26,8 @@ def filter_characters(files, locale, delimiter='\t', field=1):
         with sys.stdin if file == '-' else open(file) as f_in:
             for line in f_in:
                 line = line.rstrip('\n').split(delimiter)
-                line[field - 1] = separator_pattern.sub(' ', line[field - 1])
                 line[field - 1] = filter_pattern.sub('', line[field - 1])
+                line[field - 1] = separator_pattern.sub(' ', line[field - 1])
                 line = delimiter.join(line)
                 print(line)
 
