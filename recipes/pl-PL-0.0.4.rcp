@@ -7,7 +7,7 @@ corpus_test="/home/${USER}/Music/test"
 corpus_local="/home/${USER}/Music/local"
 
 # Available feature types: fbank, mfcc, plp.
-feature_type="fbank"
+feature_type="mfcc"
 
 hidden_states_number=256
 gaussians_number=2048

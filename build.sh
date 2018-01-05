@@ -31,7 +31,9 @@ prepare_build_dir() {
 copy_data() {
     cp -r ${corpus_train}/* ${train_dir}
     cp -r ${corpus_test}/* ${test_dir}
-    cp -r ${corpus_local}/* ${local_dir}
+    if [ -d "${corpus_local}" ]; then
+        cp -r ${corpus_local}/* ${local_dir}
+    fi
 }
 
 prepare_audio_data() {
@@ -50,7 +52,7 @@ prepare_audio_data() {
     ./local/make_words.sh "${lang}" "${dir}/${corpus}" > "${dir}/${words}"
 
     execute "Generating grapheme to phoneme mapping..." \
-    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" > "${dir}/${lexicon}"
+    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" | ./local/processing/fix.py "${local_dir}/dict/${lexicon_rules}" > "${dir}/${lexicon}"
 
     execute "Preparing utt2spk..." \
     ./local/make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
@@ -61,13 +63,13 @@ prepare_audio_data() {
 
     case ${feature_type} in
     fbank)
-        steps/make_fbank.sh --nj 1 ${dir} ${dir}/log ${dir}
+        steps/make_fbank.sh --nj 4 ${dir} ${dir}/log ${dir}
         ;;
     mfcc)
-        steps/make_mfcc.sh --nj 1 ${dir} ${dir}/log ${dir}
+        steps/make_mfcc.sh --nj 4 ${dir} ${dir}/log ${dir}
         ;;
     plp)
-        steps/make_plp.sh --nj 1 ${dir} ${dir}/log ${dir}
+        steps/make_plp.sh --nj 4 ${dir} ${dir}/log ${dir}
         ;;
     esac
 
@@ -79,10 +81,10 @@ prepare_language_data() {
     mkdir -p "${local_dir}/dict"
 
     execute "Preparing corpus..." \
-    ./local/make_local_corpus.sh ${data_dir}/*/${corpus} ${local_dir}/${corpus} | sponge "${local_dir}/${corpus}"
+    ./local/make_local_corpus.sh ${lang} ${local_dir}/${corpus} | sponge "${local_dir}/${corpus}"
 
     execute "Preparing lexicon..." \
-    ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt ${local_dir}/dict/lexicon.txt | sponge "${local_dir}/dict/lexicon.txt"
+    ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt ${local_dir}/dict/lexicon.txt | ./local/processing/fix.py "${local_dir}/dict/${lexicon_rules}" | sponge "${local_dir}/dict/lexicon.txt"
 
     execute "Preparing silence phones..." \
     ./local/make_silence_phones.sh > "${local_dir}/dict/silence_phones.txt"
@@ -103,47 +105,52 @@ train_gmm() {
     steps/train_mono.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono/graph || exit 1
     steps/align_si.sh --nj 4 ${train_dir} ${lang_dir} ${exp_dir}/mono ${exp_dir}/mono_ali || exit 1
+    score ${exp_dir}/mono
     log -dnt "Training monophone model."
 
     log -int "Training triphone model (deltas)."
     steps/train_deltas.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/mono_ali ${exp_dir}/tri1 || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1/graph || exit 1
     steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri1 ${exp_dir}/tri1_ali || exit 1
+    score ${exp_dir}/tri1
     log -int "Training triphone model (deltas)."
 
     log -int "Training triphone model (deltas and delta-deltas)."
     steps/train_deltas.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2a || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2a ${exp_dir}/tri2a/graph || exit 1
+	score ${exp_dir}/tri2a
     log -dnt "Training triphone model (deltas and delta-deltas)."
 
     log -int "Training triphone model (LDA and MLLT)."
     steps/train_lda_mllt.sh  ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri1_ali ${exp_dir}/tri2b || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b/graph || exit 1
     steps/align_si.sh --nj 4 --use-graphs true ${train_dir} ${lang_dir} ${exp_dir}/tri2b ${exp_dir}/tri2b_ali || exit 1
+    score ${exp_dir}/tri2b
     log -dnt "Training triphone model (LDA and MLLT)."
 
     log -int "Training triphone model (SAT)."
     steps/train_sat.sh ${hidden_states_number} ${gaussians_number} ${train_dir} ${lang_dir} ${exp_dir}/tri2b_ali ${exp_dir}/tri3b || exit 1
 	utils/mkgraph.sh ${lang_dir} ${exp_dir}/tri3b ${exp_dir}/tri3b/graph || exit 1
+	score ${exp_dir}/tri3b
     log -dnt "Training triphone model (SAT)."
 }
 
-score_gmm() {
-    for model_dir in ${exp_dir}/*; do
-        score ${model_dir}
-    done
-}
+#score_gmm() {
+#    for model_dir in ${exp_dir}/*; do
+#        score ${model_dir}
+#    done
+#}
 
 score() {
     model_dir=${1}
 
-    steps/decode.sh --nj 1 --skip-scoring true \
+    steps/decode.sh --nj 4 --skip-scoring true \
 	${model_dir}/graph ${test_dir} ${model_dir}/offline
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/offline
 
     steps/online/prepare_online_decoding.sh ${train_dir} ${lang_dir} ${model_dir} ${model_dir}
-	steps/online/decode.sh --nj 1 --skip-scoring true \
+	steps/online/decode.sh --nj 4 --skip-scoring true \
 	${model_dir}/graph ${test_dir} ${model_dir}/online
 	steps/score_kaldi.sh \
 	${test_dir} ${model_dir}/graph ${model_dir}/online
@@ -172,6 +179,7 @@ main() {
     wav_scp="wav.scp"
     words="words.txt"
     lexicon="lexicon.txt"
+    lexicon_rules="lexicon.rules"
     utt2spk="utt2spk"
     spk2utt="spk2utt"
     silence_phones="silence_phones.txt"
@@ -185,7 +193,7 @@ main() {
     prepare_language_data
 
     train_gmm
-    score_gmm
+#    score_gmm
 }
 
 main

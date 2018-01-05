@@ -1,6 +1,6 @@
 export RECIPES_ROOT="./recipes"
 export BUILDS_ROOT="./builds"
-export KALDI_ROOT="/opt/kaldi"
+export KALDI_ROOT="/home/jfajkowski/Projects/kaldi"
 
 # Setting paths to useful tools
 PATH="${KALDI_ROOT}/src/bin:${PATH}"
