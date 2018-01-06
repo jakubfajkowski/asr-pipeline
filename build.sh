@@ -52,10 +52,10 @@ prepare_audio_data() {
     ./local/make_words.sh "${lang}" "${dir}/${corpus}" > "${dir}/${words}"
 
     execute "Generating grapheme to phoneme mapping..." \
-    ./local/make_data_lexicon.sh "${dir}/${words}" "${lang}" | ./local/processing/fix.py "${local_dir}/dict/${lexicon_rules}" > "${dir}/${lexicon}"
+    ./local/make_data_lexicon.sh "${lang}" "${dir}/${words}" > "${dir}/${lexicon}"
 
     execute "Preparing utt2spk..." \
-    ./local/make_utt2spk.sh "${dir}" > "${dir}/${utt2spk}"
+    ./local/make_utt2spk.sh "${data_dir}/*/*.wav" > "${dir}/${utt2spk}"
 
     execute "Preparing spk2utt..." \
 	./utils/utt2spk_to_spk2utt.pl "${dir}/${utt2spk}" > "${dir}/${spk2utt}"
@@ -84,7 +84,7 @@ prepare_language_data() {
     ./local/make_local_corpus.sh ${lang} ${local_dir}/${corpus} | sponge "${local_dir}/${corpus}"
 
     execute "Preparing lexicon..." \
-    ./local/make_local_lexicon.sh ${data_dir}/*/lexicon.txt ${local_dir}/dict/lexicon.txt | ./local/processing/fix.py "${local_dir}/dict/${lexicon_rules}" | sponge "${local_dir}/dict/lexicon.txt"
+    ./local/make_local_lexicon.sh ${local_dir}/dict/${lexicon_rules} ${data_dir}/*/lexicon.txt ${local_dir}/dict/lexicon.txt | sponge "${local_dir}/dict/lexicon.txt"
 
     execute "Preparing silence phones..." \
     ./local/make_silence_phones.sh > "${local_dir}/dict/silence_phones.txt"

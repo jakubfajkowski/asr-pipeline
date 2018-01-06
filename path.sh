@@ -22,7 +22,7 @@ PATH="${PWD}:${PATH}"
 export PATH
 
 # Enable SRILM
-source "${KALDI_ROOT}/tools/env.sh"
+. "${KALDI_ROOT}/tools/env.sh"
 
 # Variable needed for proper data sorting
 export LC_ALL=C.UTF-8
