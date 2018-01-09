@@ -3,6 +3,10 @@ export BUILDS_ROOT="./builds"
 export KALDI_ROOT="/home/jfajkowski/Projects/kaldi"
 
 # Setting paths to useful tools
+PATH="${PWD}:${PATH}"
+PATH="${PWD}/scripts:${PATH}"
+PATH="${PWD}/scripts/processing:${PATH}"
+PATH="${PWD}/utils:${PATH}"
 PATH="${KALDI_ROOT}/src/bin:${PATH}"
 PATH="${KALDI_ROOT}/src/ivectorbin/:${PATH}"
 PATH="${KALDI_ROOT}/src/featbin/:${PATH}"
@@ -17,12 +21,10 @@ PATH="${KALDI_ROOT}/src/nnetbin/:${PATH}"
 PATH="${KALDI_ROOT}/src/nnet2bin/:${PATH}"
 PATH="${KALDI_ROOT}/src/nnet3bin/:${PATH}"
 PATH="${KALDI_ROOT}/tools/openfst/bin:${PATH}"
-PATH="${PWD}/utils:${PATH}"
-PATH="${PWD}:${PATH}"
 export PATH
 
 # Enable SRILM
-. "${KALDI_ROOT}/tools/env.sh"
+source "${KALDI_ROOT}/tools/env.sh"
 
 # Variable needed for proper data sorting
 export LC_ALL=C.UTF-8

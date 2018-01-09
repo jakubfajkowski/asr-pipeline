@@ -18,6 +18,30 @@ class NonBreakingSpaceCleaner(Cleaner):
         return text.replace(NonBreakingSpaceCleaner.NON_BREAKING_SPACE, ' ')
 
 
+class HyperlinksCleaner(Cleaner):
+    PATTERN = '(?:https?:\/\/)(?:www)?\.?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?'
+
+    def __init__(self):
+        self.regex = re.compile(HyperlinksCleaner.PATTERN)
+
+    def apply(self, text):
+        if None in self.regex.split(text):
+            print(text)
+        return ' '.join(self.regex.split(text))
+
+
+class AlphanumericCleaner(Cleaner):
+    SPLIT_PATTERN = r'(\W+)'
+
+    def __init__(self):
+        self.regex = re.compile(AlphanumericCleaner.SPLIT_PATTERN)
+
+    def apply(self, text):
+        words = self.regex.split(text)
+        filtered = filter(lambda w: w.isalnum() and (w.isalpha() or w.isnumeric()), words)
+        return ' '.join(filtered)
+
+
 class CharacterCleaner(Cleaner):
     LOCALES_TO_PATTERNS = {
         'pl-PL': r'[^a-zA-ZąĄćĆęĘłŁńŃóÓśŚźŹżŻ -]'
@@ -69,9 +93,11 @@ def parse_args():
 def clean(files, locale, delimiter='\t', field=1):
     cleaners = [
         NonBreakingSpaceCleaner(),
+        HyperlinksCleaner(),
         CharacterCleaner(locale),
         SeparatorCleaner(),
-        TyposCleaner()
+        TyposCleaner(),
+        AlphanumericCleaner()
     ]
 
     for file in files:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 source ./path.sh
-source ./utils.sh
+source utils.sh
 
 readonly SCRIPT_NAME="$(realpath ${0})"
 readonly SCRIPT_DIR="$(dirname ${SCRIPT_NAME})"

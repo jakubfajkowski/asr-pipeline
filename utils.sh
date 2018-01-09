@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =======================
 # === LOGGING UTILITY ===
 # =======================
@@ -66,25 +66,6 @@ log() {
 
     if [ "${mode}" != "${MODE_DEBUG}" ] || [ "${DEBUG}" == true ] ; then
         printf "${color_begin}${timestamp}${mode}${message}${color_end}${newline}" 1>&2
-    fi
-}
-
-# =======================
-# === EXECUTE UTILITY ===
-# =======================
-
-execute() {
-    set -o pipefail
-    log_message="${1}"; shift
-
-    log -int "${log_message}"
-    log -xnt "$@"
-    if "$@" 2> >(tee -a ${LOG} >&2); then
-        log -dnt "${log_message}"
-    else
-        log -ent "${log_message}"
-        log -ent "Log path: ${LOG}"
-        exit 1
     fi
 }
 

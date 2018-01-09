@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source path.sh
+
 readonly extension='.wav'
 
 files=$@
