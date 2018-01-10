@@ -82,6 +82,25 @@ requirements() {
     done
 }
 
+# =======================
+# === EXECUTE UTILITY ===
+# =======================
+
+execute() {
+    set -o pipefail
+    log_message="${1}"; shift
+
+    log -int "${log_message}"
+    log -xnt "$@"
+    if "$@" 2> >(tee -a build.log >&2); then
+        log -dnt "${log_message}"
+    else
+        log -ent "${log_message}"
+        log -ent "Log path: build.log"
+        exit 1
+    fi
+}
+
 # =========================
 # === ARGUMENTS UTILITY ===
 # =========================

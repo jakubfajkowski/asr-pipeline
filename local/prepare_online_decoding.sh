@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #!/bin/bash
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
@@ -80,12 +82,13 @@ echo $nj >$dir/num_jobs || exit 1;
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;
 
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null` 
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null` 
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 cp $srcdir/splice_opts $srcdir/cmvn_opts $srcdir/final.mat $srcdir/final.mdl $dir/ 2>/dev/null
 
-cp $srcdir/tree $dir/tree
+cp $srcdir/tree $dir
+cp -r $srcdir/graph $dir
 cp $mmi_model $dir/final.rescore_mdl
 
 # Set up the unadapted features "$sifeats".
@@ -117,7 +120,7 @@ case $feat_type in
 esac
 
 # Set up the adapted features "$feats" for training set.
-if [ -f $srcdir/trans.1 ]; then 
+if [ -f $srcdir/trans.1 ]; then
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$srcdir/trans.JOB ark:- ark:- |";
 else
   feats="$sifeats";
@@ -137,13 +140,13 @@ fi
 if [ $stage -le 0 ]; then
   echo "$0: Accumulating statistics for basis-fMLLR computation"
 # Note: we get Gaussian level alignments with the "final.mdl" and the
-# speaker adapted features. 
+# speaker adapted features.
   $cmd JOB=1:$nj $dir/log/basis_acc.JOB.log \
     ali-to-post "ark:gunzip -c $srcdir/ali.JOB.gz|" ark:- \| \
     weight-silence-post $silence_weight $silphonelist $dir/final.mdl ark:- ark:- \| \
     gmm-post-to-gpost $dir/final.mdl "$feats" ark:- ark:- \| \
     gmm-basis-fmllr-accs-gpost $spk2utt_opt \
-    $dir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
+    $dir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
@@ -200,7 +203,7 @@ if [ $stage -le 3 ]; then
     *)
       echo "Unknown feature type $feature_type"
   esac
-  if ! cp $online_cmvn_config $dir/conf/online_cmvn.conf; then 
+  if ! cp $online_cmvn_config $dir/conf/online_cmvn.conf; then
     echo "$0: error copying online cmvn config to $dir/conf/"
     exit 1;
   fi
@@ -243,7 +246,7 @@ if [ $stage -le 3 ]; then
     #  perl -e '$_ = <>; s/^\s+|\s+$//g; ($t, $c) = (split)[13, 16]; print -$t/$c;');
     #echo "--pov-offset=$offset" >>$dir/conf/pitch_process.conf
   fi
-  
+
   echo "--fmllr-basis=$dir/fmllr.basis" >>$conf
   echo "--online-alignment-model=$dir/final.oalimdl" >>$conf
   echo "--model=$dir/final.mdl" >>$conf

@@ -4,4 +4,4 @@ source path.sh
 
 lang=${1}; shift
 
-cat $@ | scripts/target/words.sh ${lang}
+tokenizer.py ${lang}

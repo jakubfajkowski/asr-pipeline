@@ -1,12 +1,10 @@
-export RECIPES_ROOT="./recipes"
-export BUILDS_ROOT="./builds"
+export TOOLS_ROOT="../asr-tools"
 export KALDI_ROOT="/home/jfajkowski/Projects/kaldi"
 
 # Setting paths to useful tools
 PATH="${PWD}:${PATH}"
-PATH="${PWD}/scripts:${PATH}"
-PATH="${PWD}/scripts/processing:${PATH}"
 PATH="${PWD}/utils:${PATH}"
+PATH="${PWD}/${TOOLS_ROOT}/scripts:${PATH}"
 PATH="${KALDI_ROOT}/src/bin:${PATH}"
 PATH="${KALDI_ROOT}/src/ivectorbin/:${PATH}"
 PATH="${KALDI_ROOT}/src/featbin/:${PATH}"

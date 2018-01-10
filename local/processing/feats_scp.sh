@@ -2,20 +2,18 @@
 
 source path.sh
 
-jobs=${1}; shift
-feature_type=${1}; shift
 data_dir=${1}; shift
 
 for dir in ${data_dir}/*; do
     case ${feature_type} in
         fbank)
-            steps/make_fbank.sh --nj 4 ${dir} ${dir}/log ${dir}
+            steps/make_fbank.sh --nj $(JOBS) ${dir} ${dir}/log ${dir}
             ;;
         mfcc)
-            steps/make_mfcc.sh --nj 4 ${dir} ${dir}/log ${dir}
+            steps/make_mfcc.sh --nj $(JOBS) ${dir} ${dir}/log ${dir}
             ;;
         plp)
-            steps/make_plp.sh --nj 4 ${dir} ${dir}/log ${dir}
+            steps/make_plp.sh --nj $(JOBS) ${dir} ${dir}/log ${dir}
             ;;
         esac
 
