@@ -1,3 +1,0 @@
-JOBS=4
-
-BUILDS_DIR="builds"

@@ -2,8 +2,9 @@
 
 source path.sh
 
-lang_dir=${1}
+ngram_order=${1}
 local_dir=${2}
+lang_dir=${3}
 
 corpus=${local_dir}/corpus.txt
 lm_arpa=${lang_dir}/lm.arpa

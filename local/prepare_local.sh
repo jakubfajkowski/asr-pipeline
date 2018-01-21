@@ -5,10 +5,10 @@ source path.sh
 local_dir=${1}
 
 corpus=${local_dir}/corpus.txt
-corpus_rules=${local_dir}/../corpus.rules
+corpus_rules=${local_dir}/corpus.rules
 dirty_corpus=${local_dir}/corpus.txt~
 lexicon=${local_dir}/lexicon.txt
-lexicon_rules=${local_dir}/../lexicon.rules
+lexicon_rules=${local_dir}/lexicon.rules
 nonsilence_phones=${local_dir}/nonsilence_phones.txt
 optional_silence=${local_dir}/optional_silence.txt
 silence_phones=${local_dir}/silence_phones.txt

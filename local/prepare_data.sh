@@ -2,8 +2,8 @@
 
 source path.sh
 
-data_dir=${1}
-local_dir=${2}
+local_dir=${1}
+data_dir=${2}
 
 corpus=${data_dir}/corpus.txt
 corpus_rules=${local_dir}/corpus.rules
@@ -26,6 +26,9 @@ utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 
 < ${text} cut -f 2 > ${dirty_corpus}
 < ${dirty_corpus} local/processing/corpus.sh ${lang} ${corpus_rules} > ${corpus}
+if ${cheat} || ! [ -s ${local_dir}/corpus.txt~ ]; then
+    cat ${corpus} >> ${local_dir}/corpus.txt
+fi
 
 < ${corpus} local/processing/words.sh ${lang} > ${words}
 
@@ -33,24 +36,16 @@ utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 
 case ${feature_type} in
     fbank)
-        steps/make_fbank.sh --nj ${JOBS} ${data_dir} ${data_dir}/log ${data_dir}
+        steps/make_fbank.sh --nj ${jobs} ${data_dir} ${data_dir}/log ${data_dir}
         ;;
     mfcc)
-        steps/make_mfcc.sh --nj ${JOBS} ${data_dir} ${data_dir}/log ${data_dir}
+        steps/make_mfcc.sh --nj ${jobs} ${data_dir} ${data_dir}/log ${data_dir}
         ;;
     plp)
-        steps/make_plp.sh --nj ${JOBS} ${data_dir} ${data_dir}/log ${data_dir}
+        steps/make_plp.sh --nj ${jobs} ${data_dir} ${data_dir}/log ${data_dir}
         ;;
 esac
 
 steps/compute_cmvn_stats.sh ${data_dir} ${data_dir}/log ${data_dir}
 
 utils/fix_data_dir.sh ${data_dir}
-
-if ${cheat}; then
-    for dir in ${local_dir}/*; do
-        if [ -d ${dir} ]; then
-            cat ${corpus} >> ${dir}/corpus.txt
-        fi
-    done
-fi
