@@ -19,5 +19,5 @@ steps/train_nnet.sh data/train data/train lang/base ${exp_dir}/tri4-ali ${exp_di
 
 if ${decode}; then
     steps/decode_nnet.sh --nj ${nj} ${exp_dir}/tri4/graph data/test ${exp_dir}/nnet-${type}/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/nnet-${type}/decode ${exp_dir}/nnet-${type}/rescore
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/nnet-${type}/decode ${exp_dir}/nnet-${type}/rescore
 fi

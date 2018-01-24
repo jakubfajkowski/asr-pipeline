@@ -47,8 +47,8 @@ local/log.sh -int "Preparing data/local"
     local/prepare_local.sh data/local
 
 local/log.sh -int "Preparing lang"
-    local/prepare_lang.sh 2 data/local lang/base
-    local/prepare_lang.sh 3 data/local lang/rescore
+    local/prepare_lang.sh "fst" 2 data/local lang/base
+    local/prepare_lang.sh "carpa" 3 data/local lang/rescore
 
 local/log.sh -int "Training monophone model."
     local/exp/mono.sh --decode ${decode} exp 2600
@@ -69,8 +69,10 @@ local/log.sh -int "Training triphone model (FMMI)."
     local/exp/tri4-fmmi.sh --decode ${decode} exp 256 0.1
 
 local/log.sh -int "Preparing and evaluating final model."
-    steps/online/prepare_online_decoding.sh data/train lang/base exp/tri4 exp/tri4-fmmi/5.mdl exp/tri4-online
-    cp exp/tri4/tree exp/tri4-online/tree
-    utils/mkgraph.sh lang/base exp/tri4-online exp/tri4-online/graph
-    steps/online/decode.sh exp/tri4-online/graph data/test exp/tri4-online/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test exp/tri4-online/decode exp/tri4-online/rescore
+    if ! [ -d exp/tri4/graph ]; then
+        utils/mkgraph.sh lang/base exp/tri4 exp/tri4/graph
+    fi
+
+    steps/online/prepare_online_decoding.sh --feature-type ${feature_type} data/train lang/base exp/tri4 exp/tri4-fmmi/5.mdl exp/tri4-online
+    steps/online/decode.sh exp/tri4/graph data/test exp/tri4-online/decode
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test exp/tri4-online/decode exp/tri4-online/rescore

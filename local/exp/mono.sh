@@ -16,5 +16,5 @@ steps/train_mono.sh --nj ${nj} --totgauss ${num_gaussians} data/train lang/base 
 if ${decode}; then
     utils/mkgraph.sh lang/base ${exp_dir}/mono ${exp_dir}/mono/graph
     steps/decode.sh --nj ${nj} ${exp_dir}/mono/graph data/test ${exp_dir}/mono/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/mono/decode ${exp_dir}/mono/rescore
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/mono/decode ${exp_dir}/mono/rescore
 fi

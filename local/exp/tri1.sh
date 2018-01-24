@@ -21,5 +21,5 @@ steps/train_deltas.sh ${num_leaves} ${num_gaussians} data/train lang/base ${exp_
 if ${decode}; then
     utils/mkgraph.sh lang/base ${exp_dir}/tri1 ${exp_dir}/tri1/graph
     steps/decode.sh --nj ${nj} ${exp_dir}/tri1/graph data/test ${exp_dir}/tri1/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/tri1/decode ${exp_dir}/tri1/rescore
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/tri1/decode ${exp_dir}/tri1/rescore
 fi

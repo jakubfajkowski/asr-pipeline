@@ -30,9 +30,13 @@ steps/train_mmi_fmmi.sh --learning-rate ${learning_rate} --boost ${boost} \
                         data/train lang/base ${exp_dir}/tri4-ali ${exp_dir}/tri4-diag-ubm ${exp_dir}/tri4-denlats ${exp_dir}/tri4-fmmi
 
 if ${decode}; then
+    if ! [ -d ${exp_dir}/tri4/graph ]; then
+        utils/mkgraph.sh lang/base ${exp_dir}/tri4 ${exp_dir}/tri4/graph
+    fi
+
     for iter in $(seq 0 $((iterations - 1))); do
         steps/decode_fmmi.sh --nj ${nj} --iter ${iter} --transform-dir ${exp_dir}/tri4/decode \
                              ${exp_dir}/tri4/graph data/test ${exp_dir}/tri4-fmmi/decode-${iter}
-        steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/tri4-fmmi/decode-${iter} ${exp_dir}/tri4-fmmi/rescore-${iter}
+        steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/tri4-fmmi/decode-${iter} ${exp_dir}/tri4-fmmi/rescore-${iter}
     done
 fi

@@ -23,7 +23,11 @@ fi
 steps/train_sgmm2.sh ${num_leaves} ${num_gaussians} data/train lang/base ${exp_dir}/tri4-ali ${exp_dir}/tri4-ubm/final.ubm ${exp_dir}/sgmm2
 
 if ${decode}; then
+    if ! [ -d ${exp_dir}/tri4/graph ]; then
+        utils/mkgraph.sh lang/base ${exp_dir}/tri4 ${exp_dir}/tri4/graph
+    fi
+
     utils/mkgraph.sh lang/base ${exp_dir}/sgmm2 ${exp_dir}/sgmm2/graph
     steps/decode_sgmm2.sh --nj ${nj} --transform-dir ${exp_dir}/tri4/decode ${exp_dir}/sgmm2/graph data/test ${exp_dir}/sgmm2/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/sgmm2/decode ${exp_dir}/sgmm2/rescore
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/sgmm2/decode ${exp_dir}/sgmm2/rescore
 fi

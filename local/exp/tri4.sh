@@ -21,5 +21,5 @@ steps/train_sat.sh ${num_leaves} ${num_gaussians} data/train lang/base ${exp_dir
 if ${decode}; then
     utils/mkgraph.sh lang/base ${exp_dir}/tri4 ${exp_dir}/tri4/graph
     steps/decode_fmllr.sh --nj ${nj} ${exp_dir}/tri4/graph data/test ${exp_dir}/tri4/decode
-    steps/lmrescore.sh --mode 1 lang/base lang/rescore data/test ${exp_dir}/tri4/decode ${exp_dir}/tri4/rescore
+    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test ${exp_dir}/tri4/decode ${exp_dir}/tri4/rescore
 fi
