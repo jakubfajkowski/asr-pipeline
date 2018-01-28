@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
 # Begin configuration.
-nj=4
+nj=5
+boost=0.1
 decode=true
+iterations=8
 learning_rate=0.001
 # End configuration.
 
@@ -11,8 +13,6 @@ learning_rate=0.001
 
 exp_dir=${1}
 num_gaussians=${2}
-boost=${3}
-iterations=8
 
 if ! [ -d ${exp_dir}/tri4-ali ]; then
     steps/align_fmllr.sh --nj ${nj} --use-graphs true data/train lang/base ${exp_dir}/tri4 ${exp_dir}/tri4-ali

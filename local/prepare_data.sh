@@ -26,7 +26,7 @@ utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 
 < ${text} cut -f 2 > ${dirty_corpus}
 < ${dirty_corpus} local/processing/corpus.sh ${lang} ${corpus_rules} > ${corpus}
-if ${cheat} || ! [ -s ${local_dir}/corpus.txt~ ]; then
+if ${improve} || ! [ -s ${local_dir}/corpus.txt~ ]; then
     cat ${corpus} >> ${local_dir}/corpus.txt
 fi
 

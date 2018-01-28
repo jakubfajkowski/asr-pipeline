@@ -4,4 +4,4 @@ source path.sh
 
 lang=${1}; shift
 
-tokenizer.py ${lang}
+tokenize.py ${lang}

@@ -31,18 +31,18 @@ def main():
     N = len(wers)
     X = np.arange(N)  # the x locations for the groups
     X_best = [X_labels.index(x_label) for x_label in X_labels_best]
-    plt.plot(X, Y, 'bo')
-    plt.plot(X_best, Y_best, 'ro')
+    plt.plot(X, Y, 'bo', label='wyniki modeli')
+    plt.plot(X_best, Y_best, 'ro', label='wyniki najlepszych modeli')
 
     popt, pcov = curve_fit(trend_curve, X, Y)
     xx = np.linspace(0, N, 1000)
     yy = trend_curve(xx, *popt)
-    plt.plot(xx, yy, 'k--')
+    plt.plot(xx, yy, 'k--', label='linia trendu')
 
     plt.ylabel('WER [%]')
     plt.xlabel('Liczba rozkładów Gaussa')
-    plt.xticks(X, X_labels, rotation='vertical')
-
+    plt.xticks(X[::2], X_labels[::2], rotation='vertical')
+    plt.legend()
     plt.show()
 
 

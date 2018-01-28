@@ -23,10 +23,10 @@ def main():
     rescoring_3s = []
     rescoring_4s = []
     for dir in args.experiment_dirs:
-        group = '/'.join(dir.split('/')[:-2])
-        no_rescoring = get_wer('{}/decode/scoring_kaldi/best_wer'.format(dir))
-        rescoring_3 = get_wer('{}/rescore_3/scoring_kaldi/best_wer'.format(dir))
-        rescoring_4 = get_wer('{}/rescore_4/scoring_kaldi/best_wer'.format(dir))
+        group = dir.split('/')[0]
+        no_rescoring = get_wer('{}/exp/tri4/decode/scoring_kaldi/best_wer'.format(dir))
+        rescoring_3 = get_wer('{}/exp/tri4/rescore_3/scoring_kaldi/best_wer'.format(dir))
+        rescoring_4 = get_wer('{}/exp/tri4/rescore_4/scoring_kaldi/best_wer'.format(dir))
 
         groups.append(group)
         no_rescorings.append(no_rescoring)
@@ -45,7 +45,7 @@ def main():
     ax.set_ylabel('WER [%]')
     ax.set_xticks(ind + width)
     ax.set_xticklabels(groups, rotation='vertical')
-    ax.legend((p1[0], p2[0], p3[0]), ('-', '3-gram', '4-gram'), loc=4)
+    ax.legend((p1[0], p2[0], p3[0]), ('bez rescoringu', '3-gram', '4-gram'), loc=4)
 
     plt.show()
 

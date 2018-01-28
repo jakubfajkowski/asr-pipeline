@@ -3,11 +3,11 @@
 set -e
 
 builds_dir=~/Builds
-cheat=false
+improve=false
 corpora_dir=~/Corpora
 corpora=empty
 feature_type=mfcc
-jobs='4'
+jobs=5
 lang='pl-PL'
 decode=false
 workspace=''
@@ -15,7 +15,7 @@ workspace=''
 source path.sh
 source utils/parse_options.sh
 
-export cheat
+export improve
 export feature_type
 export jobs
 export lang
@@ -66,13 +66,7 @@ local/log.sh -int "Training triphone model (SAT)."
     local/exp/tri4.sh --decode ${decode} exp 256 2048
 
 local/log.sh -int "Training triphone model (FMMI)."
-    local/exp/tri4-fmmi.sh --decode ${decode} exp 256 0.1
+    local/exp/tri4-fmmi.sh --decode ${decode} exp 256
 
 local/log.sh -int "Preparing and evaluating final model."
-    if ! [ -d exp/tri4/graph ]; then
-        utils/mkgraph.sh lang/base exp/tri4 exp/tri4/graph
-    fi
-
-    steps/online/prepare_online_decoding.sh --feature-type ${feature_type} data/train lang/base exp/tri4 exp/tri4-fmmi/5.mdl exp/tri4-online
-    steps/online/decode.sh exp/tri4/graph data/test exp/tri4-online/decode
-    steps/lmrescore_const_arpa.sh lang/base lang/rescore data/test exp/tri4-online/decode exp/tri4-online/rescore
+    local/exp/tri4-online.sh --decode ${decode} exp

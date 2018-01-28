@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Begin configuration.
-nj=4
+nj=5
 decode=true
 type=dnn
 # End configuration.

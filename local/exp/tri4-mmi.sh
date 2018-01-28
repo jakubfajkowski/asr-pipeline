@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # Begin configuration.
-nj=4
+nj=5
+boost=0.1
 decode=true
+iterations=8
 # End configuration.
 
 [ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 
 exp_dir=${1}
-boost=${2}
-iterations=${3}
 
 if ! [ -d ${exp_dir}/tri4-ali ]; then
     steps/align_fmllr.sh --nj ${nj} --use-graphs true data/train lang/base ${exp_dir}/tri4 ${exp_dir}/tri4-ali
